@@ -6,7 +6,7 @@ export interface Person {
   phone: string | null
   apartment: string | null
   photo_path: string | null
-  person_type: 'resident' | 'client' | 'visitor'
+  person_type: 'client' | 'visitor' | 'employee'
   state: 'IN' | 'OUT'
   last_entry_at: string | null
   created_at: string
@@ -37,9 +37,20 @@ export interface Notification {
 
 export interface PersonStats {
   total: number
-  residents: number
+  employees: number
   clients: number
   visitors: number
   inside: number
   outside: number
+}
+
+/** Etiqueta en UI; `resident` solo por datos legados antes de migrar a `employee`. */
+export function personTypeLabel(t: string): string {
+  if (t === 'resident') return 'Empleado'
+  const m: Record<string, string> = {
+    client: 'Cliente',
+    visitor: 'Visitante',
+    employee: 'Empleado',
+  }
+  return m[t] || t
 }

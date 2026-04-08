@@ -1,3 +1,5 @@
+import asyncio
+
 import cv2
 import numpy as np
 from insightface.app import FaceAnalysis
@@ -11,6 +13,8 @@ class FaceEngine:
 
     def __init__(self):
         self._app: FaceAnalysis | None = None
+        # InsightFace/ONNX no son seguros ante llamadas concurrentes: una inferencia a la vez.
+        self._infer_lock = asyncio.Lock()
 
     def load(self, model_name: str = "buffalo_l") -> None:
         """Descarga (si no existe) y carga el modelo. Llamar en el lifespan."""
@@ -44,6 +48,14 @@ class FaceEngine:
             key=lambda f: (f.bbox[2] - f.bbox[0]) * (f.bbox[3] - f.bbox[1]),
         )
         return largest.embedding
+
+    async def detect_and_embed_async(self, image_bytes: bytes) -> np.ndarray | None:
+        """
+        Igual que detect_and_embed pero en un hilo de trabajo para no bloquear el event loop
+        (evita timeouts HTTP/WS y mezclas raras con asyncpg mientras corre el modelo).
+        """
+        async with self._infer_lock:
+            return await asyncio.to_thread(self.detect_and_embed, image_bytes)
 
     def analyze_liveness(self, image_bytes: bytes) -> dict:
         """

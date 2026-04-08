@@ -1,24 +1,83 @@
-import uuid
-from datetime import datetime, timezone
+import asyncio
+import logging
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.database import get_db
+from app.core.database import AsyncSessionLocal, engine, get_db
 from app.core.ws_manager import ws_manager
 from app.models.models import Person, PersonType, StateType
 from app.schemas.identify import IdentifyRequest, IdentifyResponse, ApprovalRequest
 from app.services.identify import identify_face, handle_approval, complete_registration, cancel_pending, _save_photo
 
 router = APIRouter()
+_log = logging.getLogger(__name__)
+
+
+def _is_transient_pg_error(exc: BaseException) -> bool:
+    """Errores típicos cuando el remoto cierra el TCP (WinError 10054, RST, etc.)."""
+    try:
+        import asyncpg
+    except ImportError:
+        asyncpg = None  # type: ignore[assignment]
+
+    cur: BaseException | None = exc
+    seen: set[int] = set()
+    while cur is not None and id(cur) not in seen:
+        seen.add(id(cur))
+        if isinstance(cur, (ConnectionResetError, BrokenPipeError, TimeoutError)):
+            return True
+        if asyncpg is not None and isinstance(
+            cur,
+            (
+                asyncpg.exceptions.ConnectionDoesNotExistError,
+                asyncpg.exceptions.InterfaceError,
+            ),
+        ):
+            return True
+        cur = cur.__cause__
+
+    msg = str(exc).lower()
+    return (
+        "connection was closed" in msg
+        or "connection is closed" in msg
+        or "10054" in msg
+        or "closed in the middle" in msg
+    )
+
+
+async def _identify_with_db_retries(frame_b64: str) -> IdentifyResponse:
+    last: BaseException | None = None
+    for attempt in range(3):
+        try:
+            async with AsyncSessionLocal() as db:
+                return await identify_face(frame_b64, db)
+        except Exception as e:
+            last = e
+            if attempt == 2 or not _is_transient_pg_error(e):
+                raise
+            _log.warning(
+                "Fallo transitorio con PostgreSQL (intento %s/3), reintentando: %s",
+                attempt + 1,
+                e,
+            )
+            await engine.dispose()
+            await asyncio.sleep(0.3 * (attempt + 1))
+    assert last is not None
+    raise last
 
 
 @router.post("/identify", response_model=IdentifyResponse)
-async def identify(
-    payload: IdentifyRequest,
-    db: AsyncSession = Depends(get_db),
-) -> IdentifyResponse:
-    return await identify_face(payload.frame_b64, db)
+async def identify(payload: IdentifyRequest) -> IdentifyResponse:
+    try:
+        return await _identify_with_db_retries(payload.frame_b64)
+    except Exception as e:
+        if _is_transient_pg_error(e):
+            raise HTTPException(
+                status_code=503,
+                detail="No se pudo conectar a la base de datos. Comprueba red, firewall y que PostgreSQL acepte conexiones desde este equipo.",
+            ) from e
+        raise
 
 
 @router.post("/approve/{pending_id}")
@@ -58,7 +117,7 @@ async def complete_registration_endpoint(
         if "," in frame_b64:
             frame_b64 = frame_b64.split(",", 1)[1]
         image_bytes = base64.b64decode(frame_b64)
-        embedding = face_engine.detect_and_embed(image_bytes)
+        embedding = await face_engine.detect_and_embed_async(image_bytes)
         photo_path = _save_photo(image_bytes, "people")
     
     # Fallback to random if no embedding found

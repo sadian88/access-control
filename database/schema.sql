@@ -9,7 +9,7 @@ CREATE EXTENSION IF NOT EXISTS vector;
 
 -- ── TIPOS ENUM ──────────────────────────────────────────────
 
-CREATE TYPE persontype AS ENUM ('resident', 'visitor');
+CREATE TYPE persontype AS ENUM ('client', 'visitor', 'employee');
 CREATE TYPE statetype  AS ENUM ('IN', 'OUT');
 CREATE TYPE eventtype  AS ENUM ('entry', 'exit', 'unknown');
 

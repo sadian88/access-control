@@ -181,9 +181,9 @@ function RegistrationModal({ data, onRegister, onDeny, onCancel }: {
               onChange={e => setForm({...form, person_type: e.target.value})}
               className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm"
             >
-              <option value="resident">Residente</option>
               <option value="client">Cliente</option>
               <option value="visitor">Visitante</option>
+              <option value="employee">Empleado</option>
             </select>
           </div>
           

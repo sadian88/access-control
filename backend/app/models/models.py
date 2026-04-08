@@ -11,9 +11,9 @@ from app.core.database import Base
 
 
 class PersonType(str, enum.Enum):
-    resident = "resident"
     client = "client"
     visitor = "visitor"
+    employee = "employee"
 
 
 class StateType(str, enum.Enum):

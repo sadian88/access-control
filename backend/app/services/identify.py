@@ -49,7 +49,7 @@ async def verify_liveness(challenge: str, challenge_frames: list[str], primary_i
                 return (None, None)
             return (np.mean(embedding[:256]), np.mean(embedding[256:512]))
         
-        primary_embedding = face_engine.detect_and_embed(primary_image_bytes)
+        primary_embedding = await face_engine.detect_and_embed_async(primary_image_bytes)
         if primary_embedding is None:
             print("[Liveness] No face detected in primary frame")
             return False
@@ -62,7 +62,7 @@ async def verify_liveness(challenge: str, challenge_frames: list[str], primary_i
         
         for frame_b64 in challenge_frames[:3]:
             frame_bytes = _decode_frame(frame_b64)
-            emb = face_engine.detect_and_embed(frame_bytes)
+            emb = await face_engine.detect_and_embed_async(frame_bytes)
             if emb is not None:
                 center = get_face_center(emb)
                 if center[0] is not None:
@@ -233,7 +233,7 @@ async def identify_face(frame_b64: str, db: AsyncSession) -> IdentifyResponse:
                 )
 
     # 1. Extraer embedding
-    embedding = face_engine.detect_and_embed(image_bytes)
+    embedding = await face_engine.detect_and_embed_async(image_bytes)
     if embedding is None:
         return IdentifyResponse(status="no_face", event_type="no_face", message="")
 

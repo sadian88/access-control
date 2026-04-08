@@ -45,6 +45,8 @@ function NotificationItem({ event, onClick }: { event: WsEvent; onClick: () => v
   )
 }
 
+const LIVE_FEED_MAX = 10
+
 interface NotificationFeedProps {
   notifications: any[]
   unknownAlert: any
@@ -52,25 +54,30 @@ interface NotificationFeedProps {
 }
 
 export function NotificationFeed({ notifications, unknownAlert, onNavigateToActivity }: NotificationFeedProps) {
+  const latest = notifications.slice(0, LIVE_FEED_MAX)
+  const total = notifications.length
+
   return (
-    <section className="glass border border-glass/50 rounded-2xl flex flex-col overflow-hidden h-full">
-      <div className="px-3 py-2 border-b border-glass/30 flex items-center justify-between bg-gradient-to-r from-yellow-500/5 to-transparent">
-        <h2 className="text-white text-sm font-medium flex items-center gap-2">
-          <Icon icon="Activity" size={14} className="text-yellow-400 animate-pulse" />
-          Live
+    <section className="glass flex h-full max-h-[min(100%,420px)] flex-col overflow-hidden border border-white/10">
+      <div className="flex items-center justify-between border-b border-white/10 px-3 py-2">
+        <h2 className="flex items-center gap-2 text-sm font-semibold text-white">
+          <Icon icon="Bolt" size={14} className="animate-pulse text-lb-accent" />
+          En vivo
         </h2>
-        <span className="text-[10px] text-gray-500">{notifications.length}</span>
+        <span className="text-[10px] text-lb-muted" title="Últimos eventos en el panel">
+          {total === 0 ? '0' : total > LIVE_FEED_MAX ? `${LIVE_FEED_MAX} de ${total}` : `${total}`}
+        </span>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-2 scrollbar-thin">
-        {notifications.length === 0 ? (
+      <div className="min-h-0 flex-1 overflow-y-auto p-2">
+        {total === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-center py-4">
             <Icon icon="Eye" size={24} className="text-gray-600 mb-2" />
             <p className="text-gray-500 text-xs">Sin eventos</p>
           </div>
         ) : (
           <div className="flex flex-col gap-0.5">
-            {notifications.slice(0, 20).map((n: any, i: number) => {
+            {latest.map((n: any, i: number) => {
               const eventTime = new Date(n.wsEvent.timestamp)
               const dateStr = eventTime.toISOString().split('T')[0]
               return (

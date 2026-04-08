@@ -4,7 +4,7 @@ const BASE = '/api/v1'
 
 export interface PersonStats {
   total: number
-  residents: number
+  employees: number
   clients: number
   visitors: number
   inside: number

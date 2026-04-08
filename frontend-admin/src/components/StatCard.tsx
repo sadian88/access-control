@@ -1,27 +1,42 @@
-export function StatCard({ title, value, icon, color, trend }: { title: string; value: number; icon: string; color: string; trend?: string }) {
-  const colorStyles: Record<string, { bg: string; border: string; text: string; glow: string }> = {
-    cyan: { bg: 'bg-cyan-500/10', border: 'border-cyan-500/20', text: 'text-cyan-400', glow: 'shadow-[0_0_15px_rgba(0,178,255,0.1)]' },
-    blue: { bg: 'bg-blue-500/10', border: 'border-blue-500/20', text: 'text-blue-400', glow: 'shadow-[0_0_15px_rgba(93,156,236,0.1)]' },
-    green: { bg: 'bg-green-500/10', border: 'border-green-500/20', text: 'text-green-400', glow: 'shadow-[0_0_15px_rgba(52,211,153,0.1)]' },
-    yellow: { bg: 'bg-yellow-500/10', border: 'border-yellow-500/20', text: 'text-yellow-400', glow: 'shadow-[0_0_15px_rgba(255,202,58,0.1)]' },
+import { Icon } from './Icon'
+
+export function StatCard({
+  title,
+  value,
+  icon,
+  color,
+  trend,
+}: {
+  title: string
+  value: number
+  icon: string
+  color: string
+  trend?: string
+}) {
+  const colorStyles: Record<string, { bg: string; border: string; text: string }> = {
+    accent: { bg: 'bg-lb-accent/10', border: 'border-lb-accent/25', text: 'text-lb-accent' },
+    primary: { bg: 'bg-lb-primary/10', border: 'border-lb-primary/25', text: 'text-lb-primary' },
+    cyan: { bg: 'bg-lb-primary/10', border: 'border-lb-primary/25', text: 'text-lb-primary' },
+    blue: { bg: 'bg-blue-500/10', border: 'border-blue-500/20', text: 'text-blue-400' },
+    green: { bg: 'bg-emerald-500/10', border: 'border-emerald-500/20', text: 'text-emerald-400' },
+    yellow: { bg: 'bg-amber-500/10', border: 'border-amber-500/25', text: 'text-amber-400' },
+    red: { bg: 'bg-red-500/10', border: 'border-red-500/25', text: 'text-red-400' },
   }
 
-  const styles = colorStyles[color]
+  const styles = colorStyles[color] ?? colorStyles.primary
 
   return (
-    <div className={`glass backdrop-blur-xl border border-glass/50 rounded-3xl p-5 shadow-glass relative overflow-hidden hover:scale-[1.02] transition-all duration-300 ${styles.glow}`}>
-      <div className={`${styles.bg} absolute top-0 right-0 w-24 h-24 rounded-bl-[100%] pointer-events-none transition-transform hover:scale-125 duration-500`} />
-
-      <div className="flex items-start justify-between relative z-10">
+    <div className={`glass border border-white/10 p-5 ${styles.bg}`}>
+      <div className="relative z-10 flex items-start justify-between">
         <div>
-          <p className="text-gray-400 text-xs font-medium tracking-widest uppercase mb-1">{title}</p>
+          <p className="mb-1 text-xs font-bold uppercase tracking-wider text-lb-title">{title}</p>
           <div className="flex items-baseline gap-2">
             <span className="text-3xl font-bold text-white">{value}</span>
-            {trend && <span className={`text-xs ${styles.text} font-medium`}>{trend}</span>}
+            {trend && <span className={`text-xs font-medium ${styles.text}`}>{trend}</span>}
           </div>
         </div>
-        <div className={`w-12 h-12 rounded-2xl ${styles.bg} ${styles.border} flex items-center justify-center`}>
-          <span className={styles.text}>{icon}</span>
+        <div className={`flex h-12 w-12 items-center justify-center rounded-md border ${styles.border} ${styles.bg}`}>
+          <Icon icon={icon as any} size={22} className={styles.text} />
         </div>
       </div>
     </div>

@@ -45,7 +45,7 @@ def _decode_photo(photo_data: str) -> bytes | None:
 @router.get("/people", response_model=list[PersonResponse])
 async def list_people(
     state: str | None = Query(None, description="Filtrar por estado: IN | OUT"),
-    person_type: str | None = Query(None, description="Filtrar por tipo: resident | visitor"),
+    person_type: str | None = Query(None, description="Filtrar por tipo: client | visitor | employee"),
     search: str | None = Query(None, description="Buscar por nombre o cédula"),
     db: AsyncSession = Depends(get_db),
 ):
@@ -70,10 +70,10 @@ async def get_people_stats(db: AsyncSession = Depends(get_db)):
     total_result = await db.execute(select(func.count(Person.id)))
     total = total_result.scalar() or 0
 
-    residents_result = await db.execute(
-        select(func.count(Person.id)).where(Person.person_type == PersonType.resident)
+    employees_result = await db.execute(
+        select(func.count(Person.id)).where(Person.person_type == PersonType.employee)
     )
-    residents = residents_result.scalar() or 0
+    employees = employees_result.scalar() or 0
 
     clients_result = await db.execute(
         select(func.count(Person.id)).where(Person.person_type == PersonType.client)
@@ -97,7 +97,7 @@ async def get_people_stats(db: AsyncSession = Depends(get_db)):
 
     return PersonStatsResponse(
         total=total,
-        residents=residents,
+        employees=employees,
         clients=clients,
         visitors=visitors,
         inside=inside,

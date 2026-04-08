@@ -7,7 +7,7 @@ import {
   updatePerson, 
   deletePerson 
 } from '../api/client'
-import type { Person, PersonStats } from '../types'
+import { personTypeLabel, type Person, type PersonStats } from '../types'
 import { useStore } from '../store'
 
 function timeAgo(iso: string): string {
@@ -129,12 +129,12 @@ function PersonModal({
               <label className="block text-xs text-gray-400 mb-1.5">Tipo</label>
               <select
                 value={form.person_type}
-                onChange={e => setForm({...form, person_type: e.target.value as 'resident' | 'client' | 'visitor'})}
+                onChange={e => setForm({...form, person_type: e.target.value as 'client' | 'visitor' | 'employee'})}
                 className="w-full bg-gray-800/50 border border-gray-700 rounded-xl px-4 py-2.5 text-white"
               >
-                <option value="resident">Residente</option>
                 <option value="client">Cliente</option>
                 <option value="visitor">Visitante</option>
+                <option value="employee">Empleado</option>
               </select>
             </div>
           </div>
@@ -232,8 +232,8 @@ export function OccupantsPage() {
           <p className="text-2xl font-bold text-white">{stats?.total || 0}</p>
         </div>
         <div className="glass rounded-2xl p-4 border border-glass/50">
-          <p className="text-gray-400 text-xs">Residentes</p>
-          <p className="text-2xl font-bold text-green-400">{stats?.residents || 0}</p>
+          <p className="text-gray-400 text-xs">Empleados</p>
+          <p className="text-2xl font-bold text-green-400">{stats?.employees || 0}</p>
         </div>
         <div className="glass rounded-2xl p-4 border border-glass/50">
           <p className="text-gray-400 text-xs">Clientes</p>
@@ -271,9 +271,9 @@ export function OccupantsPage() {
             className="bg-gray-800/50 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white"
           >
             <option value="">Todos los tipos</option>
-            <option value="resident">Residente</option>
             <option value="client">Cliente</option>
             <option value="visitor">Visitante</option>
+            <option value="employee">Empleado</option>
           </select>
           <input
             type="text"
@@ -343,13 +343,13 @@ export function OccupantsPage() {
                     <td className="p-4 text-gray-400">{p.apartment || '—'}</td>
                     <td className="p-4">
                       <span className={`px-2 py-1 rounded text-xs ${
-                        p.person_type === 'resident' 
+                        p.person_type === 'employee'
                           ? 'bg-green-500/20 text-green-400 border border-green-400/30'
                           : p.person_type === 'client'
                             ? 'bg-blue-500/20 text-blue-400 border border-blue-400/30'
                             : 'bg-yellow-500/20 text-yellow-400 border border-yellow-400/30'
                       }`}>
-                        {p.person_type === 'resident' ? 'Residente' : p.person_type === 'client' ? 'Cliente' : 'Visitante'}
+                        {personTypeLabel(p.person_type)}
                       </span>
                     </td>
                     <td className="p-4">

@@ -5,7 +5,7 @@ import { OccupantsPage } from './components/OccupantsPage'
 import { ActivityPage } from './components/ActivityPage'
 import { OccupantsList } from './components/OccupantsList'
 import { NotificationFeed } from './components/NotificationFeed'
-import { EventsChart, TypeDistributionChart, HourlyActivityChart, OccupancyTrendChart } from './components/Charts'
+import { EventsChart, HourlyActivityChart } from './components/Charts'
 import { UnknownModal } from './components/UnknownModal'
 import { PendingModals } from './components/PendingModals'
 import { useWebSocket } from './hooks/useWebSocket'
@@ -23,7 +23,6 @@ export default function App() {
     events, 
     notifications, 
     unknownAlert, 
-    wsConnected, 
     dismissUnknown, 
     getPaginatedEvents,
     currentPage: tablePage,
@@ -106,68 +105,68 @@ export default function App() {
     <div className="flex h-screen overflow-hidden">
       <Sidebar currentPage={currentPage} onNavigate={setCurrentPage} />
 
-      <div className="flex-1 flex flex-col overflow-hidden bg-gradient-to-br from-gray-900/50 to-black/50">
-        <Header wsConnected={wsConnected} notifications={notifications} onToggleNotifications={() => setShowNotifications(!showNotifications)} showNotifications={showNotifications} />
-        
-        <main className="flex-1 overflow-auto">
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+        <Header notifications={notifications} onToggleNotifications={() => setShowNotifications(!showNotifications)} showNotifications={showNotifications} />
+
+        <main className="relative flex-1 overflow-auto px-4 pb-14 pt-6 sm:px-6 lg:px-10">
           {currentPage === 'dashboard' ? (
-            <div className="p-3 lg:p-4 space-y-3">
+            <div className="space-y-4">
               {/* Stats compact */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
-                <StatCard title="Adentro" value={occupants.length} icon="Users" color="cyan" />
-                <StatCard title="Hoy" value={todayEvents} icon="Activity" color="blue" />
-                <StatCard title="Residentes" value={occupants.filter((o: any) => o.person_type === 'resident').length} icon="Home" color="green" />
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+                <StatCard title="Adentro" value={occupants.length} icon="Users" color="accent" />
+                <StatCard title="Hoy" value={todayEvents} icon="Bolt" color="primary" />
+                <StatCard title="Empleados" value={occupants.filter((o: any) => o.person_type === 'employee').length} icon="Briefcase" color="green" />
                 <StatCard title="Clientes" value={occupants.filter((o: any) => o.person_type === 'client').length} icon="UserTie" color="blue" />
                 <StatCard title="Visitantes" value={occupants.filter((o: any) => o.person_type === 'visitor').length} icon="User" color="yellow" />
-                <StatCard title="Alertas" value={unknownAlert ? 1 : 0} icon="AlertTriangle" color="red" />
+                <StatCard title="Alertas" value={unknownAlert ? 1 : 0} icon="ExclamationTriangle" color="red" />
               </div>
 
               {/* Main content grid */}
-              <div className="grid grid-cols-1 lg:grid-cols-4 gap-3">
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-4">
                 {/* Charts column */}
-                <div className="lg:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div className="glass border border-glass/50 rounded-2xl p-4">
-                    <h3 className="text-white text-sm font-medium mb-2 flex items-center gap-2">
-                      <Icon icon="ChartLine" size={14} className="text-cyan-400" />
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:col-span-3">
+                  <div className="glass border border-white/10 p-4">
+                    <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold text-white">
+                      <Icon icon="ChartLine" size={14} className="text-lb-primary" />
                       Accesos 7 días
                     </h3>
                     <div className="h-24">
                       <EventsChart data={events} />
                     </div>
                   </div>
-                  <div className="glass border border-glass/50 rounded-2xl p-4">
-                    <h3 className="text-white text-sm font-medium mb-2 flex items-center gap-2">
-                      <Icon icon="ChartBar" size={14} className="text-yellow-400" />
+                  <div className="glass border border-white/10 p-4">
+                    <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold text-white">
+                      <Icon icon="ChartBar" size={14} className="text-lb-accent" />
                       Por hora
                     </h3>
                     <div className="h-24">
                       <HourlyActivityChart data={events} />
                     </div>
                   </div>
-                  <div className="glass border border-glass/50 rounded-2xl p-4">
-                    <h3 className="text-white text-sm font-medium mb-2 flex items-center gap-2">
-                      <Icon icon="Users" size={14} className="text-green-400" />
+                  <div className="glass border border-white/10 p-4">
+                    <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold text-white">
+                      <Icon icon="Users" size={14} className="text-emerald-400" />
                       Distribución
                     </h3>
                     <div className="flex items-center gap-4">
                       <div className="relative w-20 h-20">
                         {(() => {
-                          const r = occupants.filter(o => o.person_type === 'resident').length
+                          const e = occupants.filter(o => o.person_type === 'employee').length
                           const c = occupants.filter(o => o.person_type === 'client').length
                           const v = occupants.filter(o => o.person_type === 'visitor').length
                           const t = Math.max(occupants.length, 1)
                           return (
-                            <div className="absolute inset-0 rounded-full" style={{ background: `conic-gradient(rgba(52,211,153,0.6) 0deg ${(r/t)*360}deg, rgba(59,130,246,0.6) ${(r/t)*360}deg ${((r+c)/t)*360}deg, rgba(234,179,8,0.6) ${((r+c)/t)*360}deg 360deg)` }} />
+                            <div className="absolute inset-0 rounded-full" style={{ background: `conic-gradient(rgba(52,211,153,0.6) 0deg ${(e/t)*360}deg, rgba(59,130,246,0.6) ${(e/t)*360}deg ${((e+c)/t)*360}deg, rgba(234,179,8,0.6) ${((e+c)/t)*360}deg 360deg)` }} />
                           )
                         })()}
-                        <div className="absolute inset-4 rounded-full bg-gray-900 flex items-center justify-center">
+                        <div className="absolute inset-4 flex items-center justify-center rounded-full bg-lb-inverse">
                           <span className="text-lg font-bold text-white">{occupants.length}</span>
                         </div>
                       </div>
                       <div className="space-y-1">
                         <div className="flex items-center gap-2 text-xs">
                           <div className="w-2 h-2 rounded bg-green-500" />
-                          <span className="text-gray-400">Res: {occupants.filter(o => o.person_type === 'resident').length}</span>
+                          <span className="text-gray-400">Emp: {occupants.filter(o => o.person_type === 'employee').length}</span>
                         </div>
                         <div className="flex items-center gap-2 text-xs">
                           <div className="w-2 h-2 rounded bg-blue-500" />
@@ -180,9 +179,9 @@ export default function App() {
                       </div>
                     </div>
                   </div>
-                  <div className="glass border border-glass/50 rounded-2xl p-4">
-                    <h3 className="text-white text-sm font-medium mb-2 flex items-center gap-2">
-                      <Icon icon="UserCheck" size={14} className="text-green-400" />
+                  <div className="glass border border-white/10 p-4">
+                    <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold text-white">
+                      <Icon icon="UserCheck" size={14} className="text-emerald-400" />
                       Dentro ahora
                     </h3>
                     <OccupantsList occupants={occupants} />
@@ -190,7 +189,7 @@ export default function App() {
                 </div>
 
                 {/* Notifications - prominent */}
-                <div className="lg:col-span-1">
+                <div className="min-h-[280px] lg:col-span-1">
                   <NotificationFeed 
                     notifications={notifications} 
                     unknownAlert={unknownAlert}
@@ -207,6 +206,10 @@ export default function App() {
           ) : (
             renderPage()
           )}
+
+          <footer className="pointer-events-none absolute bottom-4 left-4 right-4 text-center text-xs text-lb-title lg:left-10 lg:right-10">
+            Basado en el tema Light Blue (Flatlogic). PRISM — control de accesos.
+          </footer>
         </main>
 
         {unknownAlert && <UnknownModal alert={unknownAlert} dismiss={dismissUnknown} />}
@@ -227,22 +230,23 @@ export default function App() {
 
 function StatCard({ title, value, icon, color }: { title: string; value: number; icon: string; color: string }) {
   const colorStyles: Record<string, { bg: string; border: string; text: string }> = {
-    cyan: { bg: 'bg-cyan-500/10', border: 'border-cyan-500/20', text: 'text-cyan-400' },
+    accent: { bg: 'bg-lb-accent/10', border: 'border-lb-accent/25', text: 'text-lb-accent' },
+    primary: { bg: 'bg-lb-primary/10', border: 'border-lb-primary/25', text: 'text-lb-primary' },
+    green: { bg: 'bg-emerald-500/10', border: 'border-emerald-500/20', text: 'text-emerald-400' },
     blue: { bg: 'bg-blue-500/10', border: 'border-blue-500/20', text: 'text-blue-400' },
-    green: { bg: 'bg-green-500/10', border: 'border-green-500/20', text: 'text-green-400' },
-    yellow: { bg: 'bg-yellow-500/10', border: 'border-yellow-500/20', text: 'text-yellow-400' },
-    red: { bg: 'bg-red-500/10', border: 'border-red-500/20', text: 'text-red-400' },
+    yellow: { bg: 'bg-amber-500/10', border: 'border-amber-500/25', text: 'text-amber-400' },
+    red: { bg: 'bg-red-500/10', border: 'border-red-500/25', text: 'text-red-400' },
   }
-  const styles = colorStyles[color]
+  const styles = colorStyles[color] ?? colorStyles.primary
 
   return (
-    <div className={`glass border ${styles.border} rounded-xl p-3 ${styles.bg}`}>
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-gray-500 text-[10px] uppercase tracking-wider">{title}</p>
+    <div className={`glass border border-white/10 p-3 ${styles.bg}`}>
+      <div className="flex items-center justify-between gap-2">
+        <div className="min-w-0">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-lb-title">{title}</p>
           <p className={`text-xl font-bold ${styles.text}`}>{value}</p>
         </div>
-        <div className={`w-8 h-8 rounded-lg ${styles.bg} ${styles.border} flex items-center justify-center`}>
+        <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-md border ${styles.border} ${styles.bg}`}>
           <Icon icon={icon} size={16} className={styles.text} />
         </div>
       </div>

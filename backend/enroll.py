@@ -1,5 +1,5 @@
 """
-Script de enrollment de personas (residentes o visitantes).
+Script de enrollment de personas (cliente, visitante o empleado).
 
 Comandos:
   Registrar:        python enroll.py add --name "Juan Pérez" --photo foto.jpg --apartment "401"
@@ -177,7 +177,7 @@ def main():
     p_add.add_argument("--email",     default=None)
     p_add.add_argument("--phone",     default=None)
     p_add.add_argument("--apartment", default=None)
-    p_add.add_argument("--type",      default="resident", choices=["resident", "visitor"])
+    p_add.add_argument("--type",      default="client", choices=["client", "visitor", "employee"])
 
     # update
     p_upd = sub.add_parser("update", help="Actualizar foto de una persona")

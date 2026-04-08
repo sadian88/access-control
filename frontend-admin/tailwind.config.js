@@ -3,31 +3,37 @@ export default {
   content: ['./index.html', './src/**/*.{ts,tsx}'],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ['"Open Sans"', 'system-ui', 'sans-serif'],
+      },
       colors: {
-        glass: {
-          DEFAULT: 'rgba(255, 255, 255, 0.03)',
-          border: 'rgba(255, 255, 255, 0.08)',
-          accent: 'rgba(0, 178, 255, 0.15)',
-          borderAccent: 'rgba(0, 178, 255, 0.3)',
+        /* Light Blue React (Flatlogic) — desde template/_variables.scss */
+        lb: {
+          bg: '#1B1E3F',
+          gradFrom: '#333867',
+          gradTo: '#17193B',
+          text: 'rgba(244, 244, 245, 0.9)',
+          muted: '#C1C3CF',
+          title: 'rgba(165, 167, 184, 0.31)',
+          primary: '#2477ff',
+          accent: '#e49400',
+          widget: 'rgba(0, 0, 0, 0.24)',
+          inverse: '#30314e',
         },
-        neon: {
-          cyan: '#00b2ff',
-          cyanDark: '#0088cc',
-          yellow: '#ffca3a',
-          green: '#2ecc93',
-          blue: '#5d9cec',
+        glass: {
+          DEFAULT: 'rgba(0, 0, 0, 0.24)',
+          border: 'rgba(255, 255, 255, 0.08)',
+          accent: 'rgba(36, 119, 255, 0.2)',
+          borderAccent: 'rgba(36, 119, 255, 0.35)',
         },
       },
       boxShadow: {
-        'glass': '0 8px 32px 0 rgba(0, 0, 0, 0.37)',
+        lb: '0 25px 20px -20px rgba(0, 0, 0, 0.1), 0 0 15px rgba(0, 0, 0, 0.06)',
+        glass: '0 8px 32px 0 rgba(0, 0, 0, 0.37)',
         'glass-lg': '0 20px 40px 0 rgba(0, 0, 0, 0.45)',
-        'neon-cyan': '0 0 20px rgba(0, 178, 255, 0.3)',
-        'neon-cyan-lg': '0 0 40px rgba(0, 178, 255, 0.4)',
-        'neon-yellow': '0 0 15px rgba(255, 202, 58, 0.25)',
       },
-      backdropBlur: {
-        xs: '2px',
-        glass: '12px',
+      borderRadius: {
+        widget: '10px',
       },
     },
   },

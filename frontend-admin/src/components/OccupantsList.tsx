@@ -26,7 +26,7 @@ export function OccupantsList({ occupants }: { occupants: Person[] }) {
               <img src={`/media/${p.photo_path}`} alt={p.full_name} className="w-full h-full object-cover" />
             ) : (
               <div className="w-full h-full flex items-center justify-center">
-                <Icon icon={p.person_type === 'resident' ? 'Home' : p.person_type === 'client' ? 'UserTie' : 'User'} size={10} className="text-gray-600" />
+                <Icon icon={p.person_type === 'employee' ? 'Briefcase' : p.person_type === 'client' ? 'UserTie' : 'User'} size={10} className="text-gray-600" />
               </div>
             )}
           </div>

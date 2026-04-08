@@ -129,7 +129,7 @@ export const useStore = create<Store>((set, get) => ({
                 id: event.person.id,
                 full_name: event.person.full_name,
                 apartment: event.person.apartment,
-                person_type: event.person.person_type as 'resident' | 'client' | 'visitor',
+                person_type: event.person.person_type as 'client' | 'visitor' | 'employee',
                 state: 'IN',
                 last_entry_at: event.timestamp,
                 cedula: null, email: null, phone: null, photo_path: null, created_at: event.timestamp,

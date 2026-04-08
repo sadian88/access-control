@@ -52,7 +52,7 @@ class VisitorCreateRequest(BaseModel):
 
 class PersonStatsResponse(BaseModel):
     total: int
-    residents: int
+    employees: int
     clients: int
     visitors: int
     inside: int

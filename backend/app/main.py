@@ -6,7 +6,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.api.v1.router import router as v1_router
 from app.ml.face_engine import face_engine
-from app.core.config import settings
+from app.core.config import ensure_media_path, settings
 
 
 @asynccontextmanager
@@ -28,6 +28,7 @@ app.add_middleware(
 
 app.include_router(v1_router, prefix="/api/v1")
 
+ensure_media_path()
 app.mount("/media", StaticFiles(directory=settings.MEDIA_PATH), name="media")
 
 
