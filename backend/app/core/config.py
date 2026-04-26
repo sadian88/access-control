@@ -24,6 +24,9 @@ class Settings(BaseSettings):
     SIMILARITY_THRESHOLD: float = 0.40
     DEBOUNCE_SECONDS: int = 10
     MEDIA_PATH: str = Field(default_factory=_default_media_path)
+    jwt_secret: str = "prism-super-secret-key-change-in-production-2026"
+    jwt_expire_hours: int = 8
+    jwt_algorithm: str = "HS256"
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
