@@ -1,15 +1,68 @@
 services:
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: edge_guard_db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-edge_guard}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init-extensions.sql:/docker-entrypoint-initdb.d/01-init-extensions.sql:ro
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - edge_guard
+    restart: unless-stopped
+
   backend:
     build: ./backend
+    container_name: edge_guard_backend
     ports:
       - "8000:8000"
     volumes:
       - ./backend:/app
       - media_files:/app/media
-    env_file:
-      - .env
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    environment:
+      POSTGRES_URL: ${POSTGRES_URL:-postgresql+asyncpg://postgres:postgres@db:5432/edge_guard}
+      MEDIA_PATH: /app/media
+      SIMILARITY_THRESHOLD: ${SIMILARITY_THRESHOLD:-0.55}
+      DEBOUNCE_SECONDS: ${DEBOUNCE_SECONDS:-10}
+      JWT_SECRET: ${JWT_SECRET:-prism-super-secret-key-change-in-production-2026}
+      JWT_EXPIRE_HOURS: ${JWT_EXPIRE_HOURS:-8}
+      JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
+    # El entrypoint ya ejecuta alembic + uvicorn (ver backend/entrypoint.sh)
+    # command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - edge_guard
+    restart: unless-stopped
+
+  admin:
+    build:
+      context: ./admin
+      args:
+        VITE_CLERK_PUBLISHABLE_KEY: ${VITE_CLERK_PUBLISHABLE_KEY:-}
+    container_name: edge_guard_admin
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+    networks:
+      - edge_guard
     restart: unless-stopped
 
 volumes:
+  postgres_data:
   media_files:
+
+networks:
+  edge_guard:
+    driver: bridge
