@@ -137,6 +137,7 @@ async def create_person(person_data: PersonCreateRequest, db: AsyncSession = Dep
         person_type=PersonType(person_data.person_type),
         embedding=embedding.tolist(),
         state=StateType.OUT,
+        building_id=uuid.uuid4(),
     )
     db.add(person)
     await db.commit()

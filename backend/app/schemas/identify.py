@@ -35,3 +35,5 @@ class IdentifyResponse(BaseModel):
 
 class ApprovalRequest(BaseModel):
     action: Literal["approve", "deny"]
+    visitor_card_number: str | None = None
+    belongs_to: Literal["UNFINET", "IFX", "OTRO"] | None = None

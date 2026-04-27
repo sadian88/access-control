@@ -67,6 +67,11 @@ async def list_events(
             event_type=e.event_type.value,
             photo_path=e.photo_path,
             stay_duration=safe_format_duration(e.stay_duration),
+            visitor_card_number=e.visitor_card_number,
+            belongs_to=e.belongs_to.value if e.belongs_to else None,
+            entry_zone=e.entry_zone,
+            has_equipment=e.has_equipment,
+            notes=e.notes,
             timestamp=e.timestamp,
         )
         for e in events
@@ -203,5 +208,10 @@ async def get_event(event_id: str, db: AsyncSession = Depends(get_db)):
         event_type=event.event_type.value,
         photo_path=event.photo_path,
         stay_duration=safe_format_duration(event.stay_duration),
+        visitor_card_number=event.visitor_card_number,
+        belongs_to=event.belongs_to.value if event.belongs_to else None,
+        entry_zone=event.entry_zone,
+        has_equipment=event.has_equipment,
+        notes=event.notes,
         timestamp=event.timestamp,
     )

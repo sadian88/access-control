@@ -87,7 +87,13 @@ async def approve(
     db: AsyncSession = Depends(get_db),
 ):
     """Approve or deny access for a pending person"""
-    result = await handle_approval(pending_id, action.action, db)
+    result = await handle_approval(
+        pending_id,
+        action.action,
+        db,
+        visitor_card_number=action.visitor_card_number,
+        belongs_to=action.belongs_to,
+    )
     if result.get("status") == "not_found":
         raise HTTPException(status_code=404, detail="Pending request not found")
     return result
@@ -136,12 +142,19 @@ async def complete_registration_endpoint(
         embedding=embedding.tolist(),
         photo_path=photo_path,
         state=StateType.IN,
+        building_id=uuid.UUID("00000000-0000-0000-0000-000000000001"),
     )
     db.add(person)
     await db.commit()
     await db.refresh(person)
 
-    result = await complete_registration(pending_id, person, db)
+    result = await complete_registration(
+        pending_id,
+        person,
+        db,
+        visitor_card_number=data.get("visitor_card_number"),
+        belongs_to=data.get("belongs_to"),
+    )
     if result.get("status") == "not_found":
         raise HTTPException(status_code=404, detail="Pending registration not found")
     

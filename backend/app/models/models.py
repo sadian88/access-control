@@ -27,6 +27,12 @@ class EventType(str, enum.Enum):
     unknown = "unknown"
 
 
+class BelongsTo(str, enum.Enum):
+    UNFINET = "UNFINET"
+    IFX = "IFX"
+    OTRO = "OTRO"
+
+
 class Person(Base):
     __tablename__ = "people"
 
@@ -49,6 +55,9 @@ class Person(Base):
     last_entry_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    building_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), nullable=False, default=uuid.UUID("00000000-0000-0000-0000-000000000001")
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -70,11 +79,38 @@ class Event(Base):
     )
     photo_path: Mapped[str | None] = mapped_column(Text, nullable=True)
     stay_duration: Mapped[object | None] = mapped_column(Interval, nullable=True)
+    visitor_card_number: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    belongs_to: Mapped[BelongsTo | None] = mapped_column(
+        Enum(BelongsTo, name="belongsto"), nullable=True
+    )
+    entry_zone: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    has_equipment: Mapped[bool | None] = mapped_column(default=False, nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    building_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), nullable=False, default=uuid.UUID("00000000-0000-0000-0000-000000000001")
+    )
     timestamp: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
 
     person: Mapped["Person | None"] = relationship(back_populates="events")
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    username: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
+    email: Mapped[str | None] = mapped_column(Text, nullable=True)
+    hashed_password: Mapped[str] = mapped_column(Text, nullable=False)
+    full_name: Mapped[str | None] = mapped_column(Text, nullable=True)
+    is_active: Mapped[bool] = mapped_column(default=True, nullable=False)
+    is_superuser: Mapped[bool] = mapped_column(default=False, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
 
 
 class TempUnknown(Base):

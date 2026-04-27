@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.utils import format_duration
-from app.models.models import Event, EventType, Person, StateType
+from app.models.models import Event, EventType, Person, StateType, BelongsTo
 
 # Cache en memoria para debounce: {person_id_str: last_processed_datetime}
 _debounce_cache: dict[str, datetime] = {}
@@ -44,6 +44,8 @@ async def process_state(
     person: Person,
     photo_path: str | None,
     db: AsyncSession,
+    visitor_card_number: str | None = None,
+    belongs_to: str | None = None,
 ) -> StateResult:
     """
     Evalúa el estado actual de la persona y ejecuta la transición correspondiente.
@@ -59,6 +61,14 @@ async def process_state(
     _mark_processed(person.id)
     now = datetime.now(timezone.utc)
 
+    # Resolve belongs_to enum if provided
+    belongs_enum = None
+    if belongs_to:
+        try:
+            belongs_enum = BelongsTo(belongs_to)
+        except ValueError:
+            belongs_enum = None
+
     if person.state == StateType.OUT:
         # Flujo de entrada
         person.state = StateType.IN
@@ -69,6 +79,9 @@ async def process_state(
             person_id=person.id,
             event_type=EventType.entry,
             photo_path=photo_path,
+            visitor_card_number=visitor_card_number,
+            belongs_to=belongs_enum,
+            building_id=uuid.UUID("00000000-0000-0000-0000-000000000001"),
             timestamp=now,
         )
         db.add(event)
@@ -100,6 +113,9 @@ async def process_state(
             event_type=EventType.exit,
             photo_path=photo_path,
             stay_duration=stay_duration,
+            visitor_card_number=visitor_card_number,
+            belongs_to=belongs_enum,
+            building_id=uuid.UUID("00000000-0000-0000-0000-000000000001"),
             timestamp=now,
         )
         db.add(event)

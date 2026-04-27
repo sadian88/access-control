@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.core.ws_manager import ws_manager
 from app.ml.face_engine import face_engine
-from app.models.models import Person, TempUnknown, StateType
+from app.models.models import Person, TempUnknown, StateType, Event, EventType, BelongsTo
 from app.schemas.identify import IdentifyResponse, PersonInfo, ApprovalRequest
 from app.services.state_machine import process_state
 
@@ -93,32 +93,47 @@ async def verify_liveness(challenge: str, challenge_frames: list[str], primary_i
         return False
 
 
+async def _get_last_entry_event(person_id: str, db: AsyncSession) -> Event | None:
+    """Get the most recent entry event for a person to retrieve card info."""
+    result = await db.execute(
+        select(Event)
+        .where(
+            Event.person_id == person_id,
+            Event.event_type == EventType.entry,
+        )
+        .order_by(Event.timestamp.desc())
+        .limit(1)
+    )
+    return result.scalar_one_or_none()
+
+
 async def identify_face(frame_b64: str, db: AsyncSession) -> IdentifyResponse:
     image_bytes = _decode_frame(frame_b64)
 
-    # Skip liveness check for now - can be added later with more sophisticated solution
-    # The approval flow provides security against photo attacks
-
-    # Check if there's a pending approval (first check if any pending exists)
+    # Check if there's a pending approval
     if _pending_approvals:
-        # Return pending status - don't process new face
         first_pending = list(_pending_approvals.values())[0]
+        pending_id_to_process = list(_pending_approvals.keys())[0]
+        
         if first_pending.get("action") == "approve":
-            # Process approved
             person_data = first_pending["person"]
             stmt = select(Person).where(Person.id == person_data["id"])
             result = await db.execute(stmt)
             person = result.scalar_one_or_none()
             if person:
                 photo_path = _save_photo(image_bytes, "events")
-                state_result = await process_state(person, photo_path, db)
-                pending_id_to_remove = None
-                for pid, p in _pending_approvals.items():
-                    if p.get("person", {}).get("id") == str(person.id):
-                        pending_id_to_remove = pid
-                        break
-                if pending_id_to_remove:
-                    del _pending_approvals[pending_id_to_remove]
+                
+                # Get card info from pending approval
+                card_number = first_pending.get("visitor_card_number")
+                belongs_to = first_pending.get("belongs_to")
+                
+                state_result = await process_state(
+                    person, photo_path, db,
+                    visitor_card_number=card_number,
+                    belongs_to=belongs_to,
+                )
+                
+                del _pending_approvals[pending_id_to_process]
                 await ws_manager.broadcast({
                     "type": state_result.event_type,
                     "person": {
@@ -145,30 +160,53 @@ async def identify_face(frame_b64: str, db: AsyncSession) -> IdentifyResponse:
                     ),
                 )
         elif first_pending.get("action") == "deny":
-            pending_id_to_remove = list(_pending_approvals.keys())[0]
-            del _pending_approvals[pending_id_to_remove]
+            del _pending_approvals[pending_id_to_process]
             return IdentifyResponse(
                 status="unknown",
                 event_type="unknown",
                 message="Acceso denegado por el guardia",
             )
         else:
-            # Still waiting for approval
             return IdentifyResponse(
                 status="pending_approval",
                 event_type=first_pending.get("event_type"),
                 message="Esperando aprobación del guardia...",
-                pending_id=list(_pending_approvals.keys())[0],
+                pending_id=pending_id_to_process,
             )
 
     # Check pending registrations
     if _pending_registrations:
         first_reg = list(_pending_registrations.values())[0]
+        reg_id = list(_pending_registrations.keys())[0]
+        
         if first_reg.get("registered"):
             person = first_reg.get("person")
             if person:
-                pending_id_to_remove = list(_pending_registrations.keys())[0]
-                del _pending_registrations[pending_id_to_remove]
+                del _pending_registrations[reg_id]
+                
+                # Create entry event for the newly registered person with card info
+                card_number = first_reg.get("visitor_card_number")
+                belongs_to = first_reg.get("belongs_to")
+                if belongs_to:
+                    try:
+                        belongs_enum = BelongsTo(belongs_to)
+                    except ValueError:
+                        belongs_enum = None
+                else:
+                    belongs_enum = None
+                
+                event = Event(
+                    id=uuid.uuid4(),
+                    person_id=person.id,
+                    event_type=EventType.entry,
+                    visitor_card_number=card_number,
+                    belongs_to=belongs_enum,
+                    building_id=uuid.UUID("00000000-0000-0000-0000-000000000001"),
+                    timestamp=datetime.now(timezone.utc),
+                )
+                db.add(event)
+                await db.commit()
+                
                 await ws_manager.broadcast({
                     "type": "entry",
                     "person": {
@@ -193,20 +231,43 @@ async def identify_face(frame_b64: str, db: AsyncSession) -> IdentifyResponse:
                         photo_path=person.photo_path,
                     ),
                 )
-        # Still waiting for registration
         return IdentifyResponse(
             status="pending_registration",
             event_type="unknown",
             message="Complete el registro en el admin...",
-            pending_id=list(_pending_registrations.keys())[0],
+            pending_id=reg_id,
         )
 
-    # Check for pending registrations
+    # Check for pending registrations by frame match
     for pending_id, pending in list(_pending_registrations.items()):
         if pending.get("frame_b64") == frame_b64:
             if pending.get("registered"):
                 person = pending["person"]
                 del _pending_registrations[pending_id]
+                
+                # Create entry event for the newly registered person
+                card_number = pending.get("visitor_card_number")
+                belongs_to = pending.get("belongs_to")
+                if belongs_to:
+                    try:
+                        belongs_enum = BelongsTo(belongs_to)
+                    except ValueError:
+                        belongs_enum = None
+                else:
+                    belongs_enum = None
+                
+                event = Event(
+                    id=uuid.uuid4(),
+                    person_id=person.id,
+                    event_type=EventType.entry,
+                    visitor_card_number=card_number,
+                    belongs_to=belongs_enum,
+                    building_id=uuid.UUID("00000000-0000-0000-0000-000000000001"),
+                    timestamp=datetime.now(timezone.utc),
+                )
+                db.add(event)
+                await db.commit()
+                
                 await ws_manager.broadcast({
                     "type": "entry",
                     "person": {
@@ -259,13 +320,23 @@ async def identify_face(frame_b64: str, db: AsyncSession) -> IdentifyResponse:
             pending_id = str(uuid.uuid4())
             photo_path = _save_photo(image_bytes, "events")
             
-            # Determine event type WITHOUT changing state (don't call process_state yet)
+            # Determine event type WITHOUT changing state
             if person.state == StateType.OUT:
                 event_type = "entry"
                 message = f"¡Bienvenido, {person.full_name}!"
             else:
                 event_type = "exit"
                 message = f"¡Hasta luego, {person.full_name}!"
+
+            # For exit: look up last entry event to get card info for display
+            last_entry_info = {}
+            if event_type == "exit":
+                last_entry = await _get_last_entry_event(str(person.id), db)
+                if last_entry:
+                    last_entry_info = {
+                        "visitor_card_number": last_entry.visitor_card_number,
+                        "belongs_to": last_entry.belongs_to.value if last_entry.belongs_to else None,
+                    }
 
             # Guardar como pending approval
             _pending_approvals[pending_id] = {
@@ -279,9 +350,10 @@ async def identify_face(frame_b64: str, db: AsyncSession) -> IdentifyResponse:
                 "message": message,
                 "photo_path": photo_path,
                 "frame_b64": frame_b64,
+                **last_entry_info,
             }
 
-            # Broadcast para approval en admin - enviar la foto capturada
+            # Broadcast para approval en admin
             await ws_manager.broadcast({
                 "type": "pending_approval",
                 "pending_id": pending_id,
@@ -296,6 +368,7 @@ async def identify_face(frame_b64: str, db: AsyncSession) -> IdentifyResponse:
                 "message": message,
                 "photo_url": f"/media/{photo_path}" if photo_path else None,
                 "timestamp": datetime.now(timezone.utc).isoformat(),
+                **last_entry_info,
             })
 
             return IdentifyResponse(
@@ -352,7 +425,7 @@ async def identify_face(frame_b64: str, db: AsyncSession) -> IdentifyResponse:
     )
 
 
-async def handle_approval(pending_id: str, action: str, db: AsyncSession) -> dict:
+async def handle_approval(pending_id: str, action: str, db: AsyncSession, visitor_card_number: str | None = None, belongs_to: str | None = None) -> dict:
     """Handle approval or denial from admin"""
     if pending_id in _pending_approvals:
         pending = _pending_approvals[pending_id]
@@ -369,15 +442,23 @@ async def handle_approval(pending_id: str, action: str, db: AsyncSession) -> dic
                 print(f"[Cleanup] Error deleting photo: {e}")
         
         pending["action"] = action
+        
+        # Store card info for entry approvals
+        if action == "approve" and pending.get("event_type") == "entry":
+            pending["visitor_card_number"] = visitor_card_number
+            pending["belongs_to"] = belongs_to
+        
         return {"status": "ok", "action": action}
     return {"status": "not_found"}
 
 
-async def complete_registration(pending_id: str, person: Person, db: AsyncSession) -> dict:
+async def complete_registration(pending_id: str, person: Person, db: AsyncSession, visitor_card_number: str | None = None, belongs_to: str | None = None) -> dict:
     """Mark registration as complete"""
     if pending_id in _pending_registrations:
         _pending_registrations[pending_id]["registered"] = True
         _pending_registrations[pending_id]["person"] = person
+        _pending_registrations[pending_id]["visitor_card_number"] = visitor_card_number
+        _pending_registrations[pending_id]["belongs_to"] = belongs_to
         await ws_manager.broadcast({
             "type": "entry",
             "person": {

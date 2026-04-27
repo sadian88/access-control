@@ -36,6 +36,7 @@ async def register_visitor(
         person_type=PersonType.visitor,
         state=StateType.IN,
         last_entry_at=now,
+        building_id=uuid.UUID("00000000-0000-0000-0000-000000000001"),
     )
     db.add(person)
 
@@ -45,6 +46,7 @@ async def register_visitor(
         person_id=person.id,
         event_type=EventType.entry,
         photo_path=temp.photo_path,
+        building_id=uuid.UUID("00000000-0000-0000-0000-000000000001"),
         timestamp=now,
     )
     db.add(event)
