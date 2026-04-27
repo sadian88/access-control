@@ -1,5 +1,5 @@
 -- ============================================================
---  Edge Guard — Schema completo
+--  Edge Guard — Schema completo (actualizado al modelo actual)
 --  Ejecutar sobre la base de datos: edge_guard
 --  Requiere: extensión pgvector instalada en el servidor
 -- ============================================================
@@ -12,6 +12,7 @@ CREATE EXTENSION IF NOT EXISTS vector;
 CREATE TYPE persontype AS ENUM ('client', 'visitor', 'employee');
 CREATE TYPE statetype  AS ENUM ('IN', 'OUT');
 CREATE TYPE eventtype  AS ENUM ('entry', 'exit', 'unknown');
+CREATE TYPE belongsto  AS ENUM ('UNFINET', 'IFX', 'OTRO');
 
 -- ── TABLA: people ───────────────────────────────────────────
 
@@ -22,22 +23,30 @@ CREATE TABLE people (
     email         TEXT,
     phone         VARCHAR(30),
     apartment     VARCHAR(50),
+    photo_path    TEXT,
     embedding     vector(512)   NOT NULL,
     person_type   persontype    NOT NULL,
     state         statetype     NOT NULL DEFAULT 'OUT',
     last_entry_at TIMESTAMPTZ,
+    building_id   UUID          NOT NULL DEFAULT '00000000-0000-0000-0000-000000000001',
     created_at    TIMESTAMPTZ   NOT NULL DEFAULT now()
 );
 
 -- ── TABLA: events ───────────────────────────────────────────
 
 CREATE TABLE events (
-    id            UUID          PRIMARY KEY DEFAULT gen_random_uuid(),
-    person_id     UUID          REFERENCES people(id),
-    event_type    eventtype     NOT NULL,
-    photo_path    TEXT,
-    stay_duration INTERVAL,
-    timestamp     TIMESTAMPTZ   NOT NULL DEFAULT now()
+    id                   UUID          PRIMARY KEY DEFAULT gen_random_uuid(),
+    person_id            UUID          REFERENCES people(id),
+    event_type           eventtype     NOT NULL,
+    photo_path           TEXT,
+    stay_duration        INTERVAL,
+    visitor_card_number  VARCHAR(50),
+    belongs_to           belongsto,
+    entry_zone           VARCHAR(100),
+    has_equipment        BOOLEAN       DEFAULT FALSE,
+    notes                TEXT,
+    building_id          UUID          NOT NULL DEFAULT '00000000-0000-0000-0000-000000000001',
+    timestamp            TIMESTAMPTZ   NOT NULL DEFAULT now()
 );
 
 -- ── TABLA: temp_unknowns ────────────────────────────────────
@@ -48,6 +57,19 @@ CREATE TABLE temp_unknowns (
     embedding     vector(512)   NOT NULL,
     created_at    TIMESTAMPTZ   NOT NULL DEFAULT now(),
     expires_at    TIMESTAMPTZ   NOT NULL
+);
+
+-- ── TABLA: users ────────────────────────────────────────────
+
+CREATE TABLE users (
+    id              UUID          PRIMARY KEY DEFAULT gen_random_uuid(),
+    username        VARCHAR(50)   UNIQUE NOT NULL,
+    email           TEXT,
+    hashed_password TEXT          NOT NULL,
+    full_name       TEXT,
+    is_active       BOOLEAN       NOT NULL DEFAULT TRUE,
+    is_superuser    BOOLEAN       NOT NULL DEFAULT FALSE,
+    created_at      TIMESTAMPTZ   NOT NULL DEFAULT now()
 );
 
 -- ── ÍNDICES ─────────────────────────────────────────────────
@@ -65,11 +87,17 @@ CREATE INDEX ix_people_state ON people (state);
 -- Índice para historial ordenado por fecha
 CREATE INDEX ix_events_timestamp ON events (timestamp DESC);
 
+-- Índices adicionales para filtros comunes en events
+CREATE INDEX ix_events_person_id ON events (person_id);
+CREATE INDEX ix_events_event_type ON events (event_type);
+
+-- Índice para búsqueda por username en auth
+CREATE INDEX ix_users_username ON users (username);
+
 -- ── TABLA DE MIGRACIONES (para que Alembic no interfiera) ───
 
--- Marcar la migración como ya aplicada para que Alembic no intente correrla
 CREATE TABLE IF NOT EXISTS alembic_version (
     version_num VARCHAR(32) NOT NULL,
     CONSTRAINT alembic_version_pkc PRIMARY KEY (version_num)
 );
-INSERT INTO alembic_version (version_num) VALUES ('001');
+INSERT INTO alembic_version (version_num) VALUES ('002');
